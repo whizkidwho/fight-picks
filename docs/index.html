@@ -160,6 +160,7 @@ async function loadAll(){
   Object.values(S.cards).forEach(c=>c.fights.sort((a,b)=>a.position-b.position));
   S.scores={};sc.forEach(r=>{(S.scores[r.card_id]=S.scores[r.card_id]||[]).push(r);});
   S.settings=st||{};
+  if(S.isAdmin&&('auto_import' in S.settings)){const r=await sb.from('sync_state').select('*').eq('id',1).maybeSingle();S.sync=r.error?null:r.data;}
   if(S.isAdmin)S.profiles=await fetchAll(()=>sb.from('profiles').select('*').order('created_at'));
   if(!S.cardId||!S.cards[S.cardId])S.cardId=defaultCardId();
   await loadCardDetail();
@@ -360,6 +361,14 @@ function renderAdmin(){
   pend.forEach(r=>{h+='<div style="padding:8px 0;border-top:1px solid var(--line)"><b>'+esc(r.name)+'</b> <span class="sm">'+esc(r.email||'')+'</span><div class="pl" style="border:0"><select data-role="linkto" data-u="'+esc(r.id)+'"><option value="new">Add as new player “'+esc(r.name)+'”</option>'+free.map(p=>'<option value="'+esc(p.id)+'"'+(p.name.toLowerCase()===String(r.name).toLowerCase()?' selected':'')+'>Link to '+esc(p.name)+'</option>').join('')+'</select><button class="mini on" data-act="approve" data-u="'+esc(r.id)+'">Approve</button><button class="mini" data-act="decline" data-u="'+esc(r.id)+'">Decline</button></div></div>';});
   h+='</section>';
   h+='<section class="box"><div class="bt">Settings</div><label class="chk"><input type="checkbox" data-chg="anyone"'+(S.settings.anyone_results?' checked':'')+'> Let any player enter fight results</label></section>';
+  if('auto_import' in S.settings){
+    const sy=S.sync||{};const when=sy.processed_at?new Date(sy.processed_at).toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'}):'never';
+    h+='<section class="box"><div class="bt">Auto-import from ESPN</div><label class="chk"><input type="checkbox" data-chg="autoimp"'+(S.settings.auto_import?' checked':'')+'> Add new UFC cards and results automatically</label>'+
+      '<div class="row" style="margin-top:8px"><div><label>Buy-in for new cards $</label><input type="number" min="0" step="1" data-chg="defbuy" value="'+esc(S.settings.default_buy_in)+'"></div></div>'+
+      '<div class="sm" style="margin-top:10px">Last check: '+esc(when)+(sy.last_status?' · '+(sy.last_status==='ok'?'✓ ':'⚠️ ')+esc(sy.last_message||''):'')+'</div>'+
+      '<div class="sm">Cards appear about '+esc(S.settings.import_days_ahead||7)+' days ahead. On fight night, results update every few minutes.</div>'+
+      '<button class="btn full" data-act="syncnow"'+(S.syncing?' disabled':'')+'>'+(S.syncing?'Syncing…':'Sync now')+'</button></section>';
+  }else h+='<section class="box"><div class="bt">Auto-import from ESPN</div><div class="sm">Off. Run <b>supabase/4_auto_import.sql</b> in Supabase to turn it on.</div></section>';
   h+='<section class="box"><div class="bt">New fight card</div><form data-form="newcard"><label>Name</label><input name="title" required placeholder="UFC 330"><div class="row"><div><label>Date</label><input name="date" type="date" required value="'+localDate()+'"></div><div><label>Buy-in $</label><input name="buy" type="number" min="0" step="1" value="25"></div></div><label>Picks lock at (optional)</label><input name="lock" type="datetime-local"><label>Fights — main event first, one per line</label><textarea name="fights" placeholder="Fighter A vs Fighter B&#10;Fighter C vs Fighter D @ 5:40pm"></textarea><div class="sm" style="margin:6px 0 10px">Add “@ 5:40pm” to lock a fight at its own start time; otherwise it locks at the card lock time.</div><button class="btn red full">Create card</button></form></section>';
   const list=sortedCards();
   if(list.length){
@@ -370,6 +379,7 @@ function renderAdmin(){
       h+='<form data-form="editcard"><label>Name</label><input name="title" value="'+esc(c.title)+'"><div class="row"><div><label>Date</label><input name="date" type="date" value="'+esc(c.card_date)+'"></div><div><label>Buy-in $</label><input name="buy" type="number" min="0" value="'+esc(c.buy_in)+'"></div></div><label>Picks lock at</label><input name="lock" type="datetime-local" value="'+toLocalInput(c.lock_at)+'"><button class="btn full">Save details</button></form>';
       h+='<label>Fights</label><div class="flist">'+c.fights.map((f,i)=>'<div class="pl"><span class="grow">'+(i+1)+'. '+esc(f.fighter_a)+' vs '+esc(f.fighter_b)+(f.starts_at?' <span class="tag">'+esc(fmtTime(f.starts_at))+'</span>':'')+'</span><button class="mini" data-act="fup" data-f="'+esc(f.id)+'" aria-label="Move up">↑</button><button class="mini" data-act="fdel" data-f="'+esc(f.id)+'" aria-label="Remove fight">✕</button></div>').join('')+'</div>';
       h+='<form data-form="addfights"><label>Add fights</label><textarea name="fights" style="min-height:70px" placeholder="Fighter A vs Fighter B @ 7:00pm"></textarea><button class="btn full">Add to card</button></form>';
+      if(c.espn_event_id)h+='<label class="chk" style="margin-top:12px"><input type="checkbox" data-chg="autosync"'+(c.auto_sync!==false?' checked':'')+'> Auto-update this card from ESPN</label>';
       h+='<button class="btn full" data-act="final">'+(c.status==='final'?'Reopen card':'Mark card final')+'</button>';
     }else h+='<div class="sm" style="margin:10px 0">Imported card — totals only.</div>';
     h+='<button class="btn warn full" data-act="delcard">'+(S.confirmDel===c.id?'Tap again to delete for good':'Delete this card')+'</button></section>';
@@ -446,6 +456,10 @@ document.addEventListener('click',async ev=>{
       S.confirmDel=null;return act(async()=>{await run(sb.from('cards').delete().eq('id',ac.id));S.adminCard=null;if(S.cardId===ac.id)S.cardId=null;toast('Card deleted');});
     case 'unlink':return act(()=>run(sb.from('players').update({user_id:null}).eq('id',t.dataset.p)));
     case 'linkme':return act(async()=>{await run(sb.from('players').update({user_id:S.uid}).eq('id',t.dataset.p));await checkMembership();});
+    case 'syncnow':S.syncing=true;render();
+      try{await run(sb.rpc('admin_sync'));await new Promise(r=>setTimeout(r,6000));await run(sb.rpc('admin_sync'));await loadAll();
+        toast(S.sync&&S.sync.last_status==='ok'?'Synced: '+S.sync.last_message:'Sync problem: '+((S.sync&&S.sync.last_message)||'unknown'));}catch(e){fail(e);}
+      S.syncing=false;return render();
     case 'hide':{const p=S.players[t.dataset.p];return act(()=>run(sb.from('players').update({active:p.active===false}).eq('id',p.id)));}
   }
 });
@@ -456,6 +470,9 @@ document.addEventListener('change',async ev=>{
   if(k==='card'){S.cardId=t.value;try{await loadCardDetail();}catch(e){fail(e);}return render();}
   if(k==='year'){S.year=t.value;return render();}
   if(k==='admincard'){S.adminCard=t.value;S.confirmDel=null;return render();}
+  if(k==='autoimp')return act(()=>run(S.sb.from('settings').update({auto_import:t.checked}).eq('id',1)));
+  if(k==='defbuy'){const v=Math.max(0,+t.value||0);return act(()=>run(S.sb.from('settings').update({default_buy_in:v}).eq('id',1)));}
+  if(k==='autosync'){const c=S.cards[S.adminCard];return act(()=>run(S.sb.from('cards').update({auto_sync:t.checked}).eq('id',c.id)));}
   if(k==='anyone')return act(()=>run(S.sb.from('settings').update({anyone_results:t.checked}).eq('id',1)));
   if(k==='pname'){const p=S.players[t.dataset.p],v=t.value.trim();if(!p||!v||v===p.name)return;return act(()=>run(S.sb.from('players').update({name:v}).eq('id',p.id)));}
 });

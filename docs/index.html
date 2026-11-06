@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fight Picks">
+<title>Fight Picks</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0b0d;--card:#16161a;--card2:#1f1f25;--line:#2b2b33;--text:#f3f3f5;--mute:#9b9ba8;--red:#e11d2a;--red2:#ff4450;--green:#22c55e;--gold:#f5c542}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,sans-serif;font-size:15px;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+.head{position:sticky;top:0;z-index:10;background:rgba(11,11,13,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 6px}
+.brand{font-family:Oswald,sans-serif;font-weight:700;letter-spacing:.08em;font-size:21px;text-transform:uppercase}
+.brand b{color:var(--red)}
+.whoami{font-size:13px;color:var(--mute);text-align:right}
+.whoami button{background:none;border:0;color:var(--mute);text-decoration:underline;cursor:pointer;padding:0 0 0 6px;font-size:13px}
+.tabs{display:flex;gap:6px;padding:6px 12px 10px}
+.tabs button{flex:1;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 4px;font-weight:600;font-size:14px;cursor:pointer}
+.tabs button.on{background:var(--red);border-color:var(--red)}
+.tabs[hidden]{display:none}
+main{max-width:640px;margin:0 auto;padding:12px 12px calc(80px + env(safe-area-inset-bottom))}
+.empty{color:var(--mute);text-align:center;padding:48px 16px;line-height:1.5}
+.banner{background:#2a1a0a;border:1px solid #5a3a12;color:#ffd79a;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.4}
+select,input,textarea{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-height:44px}
+textarea{min-height:120px;resize:vertical;line-height:1.4}
+label{display:block;font-size:12px;color:var(--mute);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.05em}
+.hero{background:linear-gradient(135deg,#2a0a0e,#16161a 60%);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+.ht{font-family:Oswald,sans-serif;font-size:22px;font-weight:600;line-height:1.15}
+.hs{color:var(--mute);font-size:13px;margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.stat{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:var(--card2);border:1px solid var(--line)}
+.stat.live{background:var(--red);border-color:var(--red)}
+.stat.done{background:#123d22;border-color:#1f6b3b;color:#bff5d0}
+.pot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px;gap:8px;flex-wrap:wrap}
+.big{font-family:Oswald,sans-serif;font-size:30px;font-weight:700;color:var(--gold);margin-right:8px}
+.sm{color:var(--mute);font-size:13px;line-height:1.45}
+.champ{font-weight:700;color:var(--gold)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0}
+.bt{font-family:Oswald,sans-serif;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:8px}
+.mine{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chip{border:1px solid var(--line);background:var(--card2);border-radius:99px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.chip.on{background:#123d22;border-color:#1f6b3b;color:#bff5d0}
+.btn{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;min-height:44px}
+.btn.red{background:var(--red);border-color:var(--red)}
+.btn.warn{background:#3a0d10;border-color:#7a1b22;color:#ffb3b8}
+.btn.full{width:100%;margin-top:12px}
+.link{background:none;border:0;color:var(--red2);cursor:pointer;padding:8px 0;font-weight:600}
+.row{display:flex;gap:8px;align-items:center}
+.row > *{flex:1}
+.row > .btn{flex:0 0 auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{color:var(--mute);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:6px 4px;text-align:center}
+td{padding:8px 4px;text-align:center;border-top:1px solid var(--line)}
+th.l,td.l{text-align:left}
+td.pts{font-family:Oswald,sans-serif;font-size:17px;font-weight:600}
+tr.lead td{color:var(--gold)}
+tr.me td.l{font-weight:700}
+.sub{color:var(--mute);font-size:12px;font-weight:400}
+.bon{display:inline-flex;align-items:center;gap:6px}
+.bon button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--card2);cursor:pointer;padding:0}
+.fight{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;margin:10px 0}
+.fm{display:flex;justify-content:space-between;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin-bottom:8px;gap:8px}
+.fm .lab{color:var(--red2);font-weight:700}
+.sides{display:flex;align-items:stretch;gap:8px}
+.vs{align-self:center;font-family:Oswald,sans-serif;color:var(--mute);font-size:13px}
+.side{flex:1;min-height:58px;border-radius:12px;border:2px solid var(--line);background:var(--card2);padding:8px;font-weight:700;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;line-height:1.2;transition:transform .08s}
+.side:active:not(:disabled){transform:scale(.97)}
+.side.picked{border-color:var(--red);background:#3a0d12;box-shadow:0 0 0 1px var(--red) inset}
+.side.won{border-color:var(--green)}
+.side.won.picked{background:#0f3a20;box-shadow:0 0 0 1px var(--green) inset}
+.side.lost{opacity:.5}
+.side.lost.picked{background:#2a0b0e;opacity:.75;text-decoration:line-through}
+.side:disabled{cursor:default}
+.ck{color:var(--green);font-size:18px}
+.delta{font-family:Oswald,sans-serif;font-size:13px;margin-left:6px}
+.delta.pos{color:var(--green)} .delta.neg{color:var(--red2)}
+.who2{display:flex;gap:24px;font-size:12px;color:var(--mute);margin-top:6px}
+.who2 > div{flex:1;text-align:center}
+.adm{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.mini{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer}
+.mini.on{background:var(--green);border-color:var(--green);color:#04210f}
+.rules,.note{color:var(--mute);font-size:12.5px;line-height:1.5;margin:14px 4px}
+.owe{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--line);gap:8px}
+.owe:first-of-type{border-top:0}
+.owe .amt{font-family:Oswald,sans-serif;font-size:17px;color:var(--gold);white-space:nowrap}
+.paid{opacity:.55}
+.pl{display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.pl:first-of-type{border-top:0}
+.pl input,.pl select{flex:1}
+.pl span.grow{flex:1}
+.tag{font-size:11px;color:var(--mute);white-space:nowrap}
+.flist{font-size:13px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(120px);background:#26262d;border:1px solid var(--line);padding:11px 16px;border-radius:12px;font-size:14px;transition:transform .25s,opacity .25s;opacity:0;pointer-events:none;z-index:50;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.chk{display:flex;gap:10px;align-items:center;font-size:14px;text-transform:none;letter-spacing:0;color:var(--text)}
+.chk input{width:22px;height:22px;min-height:0}
+.auth{max-width:420px;margin:24px auto}
+.auth .ht{text-align:center;margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="head">
+  <div class="topbar"><div class="brand" id="brand">Fight <b>Picks</b></div><div class="whoami" id="whoami"></div></div>
+  <nav class="tabs" id="tabs" hidden>
+    <button data-tab="card" class="on">Card</button>
+    <button data-tab="standings">Standings</button>
+    <button data-tab="money">Money</button>
+    <button data-tab="admin" id="adminTab" hidden>Admin</button>
+  </nav>
+</div>
+<main id="app"><div class="empty">Loading…</div></main>
+<div id="toast" class="toast" role="status"></div>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+const CFG=window.FP_CONFIG||{};
+const S={sb:null,session:null,uid:null,email:null,me:null,isAdmin:false,member:false,profile:null,
+  players:{},cards:{},scores:{},settings:{},profiles:[],picks:[],counts:{},
+  tab:'card',cardId:null,year:'all',adminCard:null,authMode:'in',confirmDel:null,pending:false,busy:false,loaded:false,offline:false};
+const $app=document.getElementById('app');
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const fmt$=n=>{const a=Math.abs(n);return (n<0?'−':'')+'$'+(a%1?a.toFixed(2):a.toFixed(0));};
+const fmtPts=n=>{const v=Math.round(n*10)/10;return (v<0?'−':'')+Math.abs(v);};
+function localDate(off){const d=new Date();d.setDate(d.getDate()+(off||0));return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function fmtDate(s,long){if(!s)return '';const [y,m,d]=String(s).split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString([],long?{weekday:'short',month:'short',day:'numeric',year:'numeric'}:{month:'short',day:'numeric',year:'2-digit'});}
+function fmtTime(iso){const d=new Date(iso);return isNaN(d)?'':d.toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'});}
+function toLocalInput(iso){if(!iso)return '';const d=new Date(iso);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());}
+const fromLocalInput=v=>v?new Date(v).toISOString():null;
+const short=n=>{const p=String(n||'').trim().split(/\s+/);return p[p.length-1]||n;};
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3000);}
+function fail(e){console.error(e);toast((e&&e.message)?e.message.replace(/^.*?:\s(?=[A-Z])/,''):'Something went wrong — try again.');}
+async function run(p){const r=await p;if(r&&r.error)throw r.error;return r?r.data:null;}
+
+/* ---------- data ---------- */
+async function fetchAll(make){let out=[],from=0;for(;;){const {data,error}=await make().range(from,from+999);if(error)throw error;out=out.concat(data||[]);if(!data||data.length<1000)break;from+=1000;}return out;}
+async function loadAll(){
+  const sb=S.sb;
+  const [pl,cd,fg,sc,st]=await Promise.all([
+    fetchAll(()=>sb.from('players').select('*').order('sort')),
+    fetchAll(()=>sb.from('cards').select('*').order('card_date',{ascending:false})),
+    fetchAll(()=>sb.from('fights').select('*').order('card_id').order('position')),
+    fetchAll(()=>sb.from('card_scores').select('*').order('card_id')),
+    run(sb.from('settings').select('*').eq('id',1).maybeSingle())
+  ]);
+  S.players={};pl.forEach(p=>S.players[p.id]=p);
+  S.cards={};cd.forEach(c=>S.cards[c.id]=Object.assign({},c,{fights:[]}));
+  fg.forEach(f=>{const c=S.cards[f.card_id];if(c)c.fights.push(f);});
+  Object.values(S.cards).forEach(c=>c.fights.sort((a,b)=>a.position-b.position));
+  S.scores={};sc.forEach(r=>{(S.scores[r.card_id]=S.scores[r.card_id]||[]).push(r);});
+  S.settings=st||{};
+  if(S.isAdmin)S.profiles=await fetchAll(()=>sb.from('profiles').select('*').order('created_at'));
+  if(!S.cardId||!S.cards[S.cardId])S.cardId=defaultCardId();
+  await loadCardDetail();
+  S.loaded=true;S.offline=false;
+}
+async function loadCardDetail(){
+  const c=S.cards[S.cardId];S.picks=[];S.counts={};
+  if(!c||c.legacy)return;
+  const [pk,ct]=await Promise.all([
+    run(S.sb.from('picks').select('fight_id,player_id,side').eq('card_id',c.id)),
+    run(S.sb.rpc('pick_counts',{p_card:c.id}))
+  ]);
+  S.picks=pk||[];(ct||[]).forEach(r=>S.counts[r.player_id]=r.n);
+}
+let reloadT=null;
+function scheduleReload(ms){clearTimeout(reloadT);reloadT=setTimeout(async()=>{try{await loadAll();}catch(e){console.warn(e);S.offline=true;}render();},ms==null?400:ms);}
+
+/* ---------- helpers ---------- */
+const activePlayers=()=>Object.values(S.players).filter(p=>p.active!==false).sort((a,b)=>(a.sort-b.sort)||a.name.localeCompare(b.name));
+const pname=pid=>(S.players[pid]&&S.players[pid].name)||'Someone';
+const canResults=()=>S.isAdmin||(!!S.settings.anyone_results&&!!S.me);
+const sortedCards=()=>Object.values(S.cards).sort((a,b)=>String(b.card_date).localeCompare(String(a.card_date))||String(b.created_at).localeCompare(String(a.created_at)));
+function isLocked(c,f){if(c.status==='final'||c.legacy||f.locked||f.winner)return true;const t=f.starts_at||c.lock_at;return !!(t&&Date.now()>=Date.parse(t));}
+function isDone(c){return !!(c.legacy||c.status==='final'||(c.fights.length&&c.fights.every(f=>f.winner)));}
+function cardRows(c){
+  return (S.scores[c.id]||[]).filter(r=>r.in_pot!==false).map(r=>({pid:r.player_id,w:r.wins,l:r.losses,b:+r.bonus||0,paid:!!r.paid,pts:r.wins-0.5*r.losses+(+r.bonus||0)}))
+    .sort((a,b)=>(b.pts-a.pts)||(b.w-a.w)||pname(a.pid).localeCompare(pname(b.pid)));
+}
+const myEntry=c=>(S.scores[c.id]||[]).find(r=>r.player_id===S.me&&!r.legacy);
+function winners(rows){if(!rows.length)return [];const m=Math.max(...rows.map(r=>r.pts));return rows.filter(r=>r.pts===m).map(r=>r.pid);}
+function defaultCardId(){
+  const y=localDate(-1);
+  const open=Object.values(S.cards).filter(c=>!c.legacy&&c.status!=='final'&&String(c.card_date)>=y).sort((a,b)=>String(a.card_date).localeCompare(String(b.card_date)));
+  if(open.length)return open[0].id;const all=sortedCards();return all.length?all[0].id:null;
+}
+
+/* ---------- render ---------- */
+function render(){
+  const ae=document.activeElement;
+  if(ae&&$app.contains(ae)&&(ae.tagName==='TEXTAREA'||(ae.tagName==='INPUT'&&!['checkbox','submit'].includes(ae.type)))){S.pending=true;return;}
+  S.pending=false;
+  const inApp=!!(S.session&&S.member);
+  document.getElementById('tabs').hidden=!inApp;
+  document.getElementById('adminTab').hidden=!S.isAdmin;
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===S.tab));
+  document.getElementById('whoami').innerHTML=S.session?(esc(S.me?pname(S.me):(S.email||''))+(S.isAdmin?' · admin':'')+'<button data-act="signout">Sign out</button>'):'';
+  let h='';
+  try{
+    if(!S.sb)h=renderNotConfigured();
+    else if(!S.session)h=renderAuth();
+    else if(!S.member)h=renderJoin();
+    else if(!S.loaded)h='<div class="empty">Loading…</div>';
+    else{
+      if(S.offline)h+='<div class="banner">Can’t reach the server right now — what you see may be out of date.</div>';
+      if(S.tab==='card')h+=renderCardTab();
+      else if(S.tab==='standings')h+=renderStandings();
+      else if(S.tab==='money')h+=renderMoney();
+      else if(S.tab==='admin')h+=renderAdmin();
+    }
+  }catch(err){console.error(err);h+='<div class="empty">Something went wrong drawing this view.</div>';}
+  const y=window.scrollY;$app.innerHTML=h;window.scrollTo(0,y);
+}
+
+function renderNotConfigured(){return '<div class="box"><div class="bt">Almost there</div><div class="sm">Open <b>config.js</b> and paste your Supabase project URL and anon key. See the README for the steps.</div></div>';}
+
+function renderAuth(){
+  const up=S.authMode==='up';
+  return '<div class="auth"><div class="box"><div class="ht">'+(up?'Create your login':'Sign in')+'</div><div class="sm" style="text-align:center">'+(up?'Then the league admin approves you.':'Weekly fight picks with the crew.')+'</div>'+
+  '<form data-form="'+(up?'signup':'signin')+'">'+(up?'<label>Your name (what the group calls you)</label><input name="name" maxlength="24" required autocomplete="nickname">':'')+
+  '<label>Email</label><input name="email" type="email" required autocomplete="email"><label>Password</label><input name="password" type="password" minlength="6" required autocomplete="'+(up?'new-password':'current-password')+'">'+
+  '<button class="btn red full"'+(S.busy?' disabled':'')+'>'+(up?'Create account':'Sign in')+'</button></form>'+
+  '<div style="text-align:center;margin-top:8px"><button class="link" data-act="authmode">'+(up?'Have a login? Sign in':'New here? Create a login')+'</button></div>'+
+  (up?'':'<div class="sm" style="text-align:center">Forgot your password? Ask the admin to reset your login.</div>')+'</div></div>';
+}
+
+function renderJoin(){
+  if(S.profile)return '<div class="auth"><div class="box"><div class="ht" style="text-align:center">Waiting for approval</div><div class="sm" style="text-align:center;margin-top:6px">You asked to join as <b>'+esc(S.profile.name)+'</b>. Once the admin approves you, this page opens up by itself.</div><button class="btn full" data-act="recheck">Check again</button></div></div>';
+  return '<div class="auth"><div class="box"><div class="ht" style="text-align:center">Ask to join</div><form data-form="request"><label>Your name</label><input name="name" maxlength="24" required value="'+esc((S.session.user.user_metadata||{}).name||'')+'"><button class="btn red full">Send request</button></form></div></div>';
+}
+
+function statusChip(c){
+  if(c.legacy)return '<span class="stat done">From spreadsheet</span>';
+  if(isDone(c))return '<span class="stat done">Final</span>';
+  if(c.fights.some(f=>isLocked(c,f)))return '<span class="stat live">Live</span>';
+  return '<span class="stat">Picks open</span>';
+}
+
+function renderCardTab(){
+  const list=sortedCards();
+  if(!list.length)return '<div class="empty">No fight cards yet.'+(S.isAdmin?'<br>Add one in the Admin tab.':'')+'</div>';
+  const c=S.cards[S.cardId]||list[0];
+  const rows=cardRows(c),done=isDone(c);
+  const anyRes=c.legacy||c.fights.some(f=>f.winner&&f.winner!=='nc');
+  const win=done?winners(rows):[],lead=!done&&anyRes?winners(rows):[];
+  const buy=+c.buy_in||0,pot=rows.length*buy;
+  let h='<select data-chg="card" aria-label="Fight card">'+list.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===c.id?' selected':'')+'>'+esc(fmtDate(x.card_date))+' · '+esc(x.title)+'</option>').join('')+'</select>';
+  h+='<section class="hero"><div class="ht">'+esc(c.title)+'</div><div class="hs">'+esc(fmtDate(c.card_date,true))+' '+statusChip(c)+'</div><div class="pot"><div>'+(c.legacy?'':'<span class="big">'+fmt$(pot)+'</span><span class="sm">'+rows.length+' in × '+fmt$(buy)+'</span>')+'</div>';
+  if(win.length)h+='<div class="champ">🏆 '+win.map(p=>esc(pname(p))).join(' & ')+(win.length>1?' split it':'')+'</div>';
+  else if(lead.length)h+='<div class="sm">Leading: <b style="color:var(--text)">'+lead.map(p=>esc(pname(p))).join(', ')+'</b></div>';
+  h+='</div></section>';
+  if(!c.legacy&&S.me){
+    const e=myEntry(c),n=S.picks.filter(p=>p.player_id===S.me).length;
+    h+='<div class="box mine"><div><b>'+esc(pname(S.me))+'</b><div class="sm">'+n+' of '+c.fights.length+' fights picked</div></div>';
+    if(e&&!done)h+='<button class="chip'+(e.in_pot===false?'':' on')+'" data-act="inpot">'+(e.in_pot===false?'Sitting out — tap to join':'✓ In for '+fmt$(buy))+'</button>';
+    else if(!e&&!done)h+='<span class="sm">Make a pick to join</span>';
+    h+='</div>';
+  }else if(!c.legacy&&!S.me)h+='<div class="banner">Your login isn’t linked to a player, so you can’t make picks. Link yourself in Admin → Players.</div>';
+  h+=renderBoard(c,rows,done?win:lead,anyRes);
+  if(c.legacy)h+='<div class="note">Imported from the spreadsheet — card totals only.</div>';
+  else h+=renderFights(c);
+  h+='<div class="rules">Scoring: right pick +1 · wrong pick −0.5 · no pick 0 · draw/no contest 0 · plus any bonus. Highest total takes the pot; a tie splits it. Each fight locks at its start time, and everyone’s picks show once it locks.</div>';
+  return h;
+}
+
+function renderBoard(c,rows,top,anyRes){
+  if(!rows.length)return '<div class="box"><div class="bt">Standings</div><div class="sm">No one’s in yet.</div></div>';
+  const edit=S.isAdmin&&!c.legacy&&c.status!=='final';
+  let h='<section class="box"><div class="bt">'+(isDone(c)?'Final':'Live')+' standings</div><table><thead><tr><th>#</th><th class="l">Player</th><th>W</th><th>L</th><th>Bonus</th><th>Pts</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    const rank=rows.findIndex(x=>x.pts===r.pts)+1;
+    h+='<tr class="'+(top.includes(r.pid)?'lead ':'')+(r.pid===S.me?'me':'')+'"><td>'+rank+'</td><td class="l">'+esc(pname(r.pid))+(!c.legacy&&!anyRes?' <span class="sub">'+(S.counts[r.pid]||0)+'/'+c.fights.length+'</span>':'')+'</td><td>'+r.w+'</td><td>'+r.l+'</td><td>'+(edit?'<span class="bon"><button data-act="bonus" data-p="'+esc(r.pid)+'" data-d="-1" aria-label="Less bonus">−</button>'+r.b+'<button data-act="bonus" data-p="'+esc(r.pid)+'" data-d="1" aria-label="More bonus">+</button></span>':r.b)+'</td><td class="pts">'+fmtPts(r.pts)+'</td></tr>';
+  });
+  return h+'</tbody></table></section>';
+}
+
+function renderFights(c){
+  if(!c.fights.length)return '<div class="box"><div class="sm">No fights on this card yet.'+(S.isAdmin?' Add them in Admin.':'')+'</div></div>';
+  const cr=canResults()&&c.status!=='final';
+  const inPot=new Set((S.scores[c.id]||[]).filter(r=>r.in_pot!==false).map(r=>r.player_id));
+  return c.fights.map((f,i)=>{
+    const lk=isLocked(c,f),mp=S.picks.find(p=>p.fight_id===f.id&&p.player_id===S.me),my=mp?mp.side:null,t=f.starts_at||c.lock_at;
+    const lab=i===0?'Main event':i===1?'Co-main':'';
+    const side=s=>{const cls=['side'];if(my===s)cls.push('picked');if(f.winner===s)cls.push('won');if(f.winner&&f.winner!==s&&f.winner!=='nc')cls.push('lost');
+      return '<button class="'+cls.join(' ')+'" data-act="pick" data-f="'+esc(f.id)+'" data-s="'+s+'"'+(lk||!S.me?' disabled':'')+'>'+(f.winner===s?'<span class="ck">✓</span>':'')+'<span>'+esc(s==='a'?f.fighter_a:f.fighter_b)+'</span></button>';};
+    let st='';if(f.winner==='nc')st='Draw / NC';else if(f.winner)st='Final';else if(lk)st='🔒 Locked';else if(t)st='Locks '+esc(fmtTime(t));
+    let d='';if(my&&f.winner){const p=f.winner==='nc'?0:(my===f.winner?1:-0.5);d='<span class="delta '+(p>0?'pos':p<0?'neg':'')+'">'+(p>0?'+1':p<0?'−0.5':'0')+'</span>';}
+    let who='';
+    if(lk){const fp=S.picks.filter(p=>p.fight_id===f.id&&inPot.has(p.player_id));const A=fp.filter(p=>p.side==='a').map(p=>pname(p.player_id)),B=fp.filter(p=>p.side==='b').map(p=>pname(p.player_id));
+      who='<div class="who2"><div>'+(A.length?esc(A.join(', ')):'—')+'</div><div>'+(B.length?esc(B.join(', ')):'—')+'</div></div>';}
+    let adm='';
+    if(cr){adm='<div class="adm">'+[['a',short(f.fighter_a)+' won'],['b',short(f.fighter_b)+' won'],['nc','Draw/NC']].map(([w,l])=>'<button class="mini'+(f.winner===w?' on':'')+'" data-act="result" data-f="'+esc(f.id)+'" data-w="'+w+'">'+esc(l)+'</button>').join('');
+      if(f.winner)adm+='<button class="mini" data-act="result" data-f="'+esc(f.id)+'" data-w="">Clear</button>';
+      else if(S.isAdmin)adm+='<button class="mini'+(f.locked?' on':'')+'" data-act="lock" data-f="'+esc(f.id)+'">'+(f.locked?'Unlock':'Lock now')+'</button>';
+      adm+='</div>';}
+    return '<div class="fight"><div class="fm"><span class="lab">'+lab+'</span><span>'+st+d+'</span></div><div class="sides">'+side('a')+'<div class="vs">VS</div>'+side('b')+'</div>'+who+adm+'</div>';
+  }).join('');
+}
+
+function renderStandings(){
+  const years=[...new Set(Object.values(S.cards).map(c=>String(c.card_date).slice(0,4)))].sort().reverse();
+  const y=S.year;
+  const cards=Object.values(S.cards).filter(c=>y==='all'||String(c.card_date).startsWith(y)).sort((a,b)=>String(a.card_date).localeCompare(String(b.card_date)));
+  const agg={};
+  for(const c of cards){const rows=cardRows(c),w=isDone(c)?winners(rows):[];
+    for(const r of rows){const a=agg[r.pid]||(agg[r.pid]={pid:r.pid,n:0,w:0,l:0,pts:0,wins:0});a.n++;a.w+=r.w;a.l+=r.l;a.pts+=r.pts;if(w.includes(r.pid))a.wins++;}}
+  const rows=Object.values(agg).sort((a,b)=>(b.pts-a.pts)||(b.wins-a.wins));
+  let h='<select data-chg="year"><option value="all"'+(y==='all'?' selected':'')+'>All time</option>'+years.map(x=>'<option value="'+x+'"'+(x===y?' selected':'')+'>'+x+' season</option>').join('')+'</select>';
+  if(!rows.length)return h+'<div class="empty">No results yet for this period.</div>';
+  h+='<section class="box"><div class="bt">Grand total</div><table><thead><tr><th>#</th><th class="l">Player</th><th>Cards</th><th>W</th><th>L</th><th>Pts</th><th>🏆</th></tr></thead><tbody>';
+  rows.forEach((r,i)=>{h+='<tr class="'+(i===0?'lead ':'')+(r.pid===S.me?'me':'')+'"><td>'+(i+1)+'</td><td class="l">'+esc(pname(r.pid))+'</td><td>'+r.n+'</td><td>'+r.w+'</td><td>'+r.l+'</td><td class="pts">'+fmtPts(r.pts)+'</td><td>'+(r.wins||'')+'</td></tr>';});
+  h+='</tbody></table></section><section class="box"><div class="bt">Card by card</div>';
+  cards.slice().reverse().forEach(c=>{const rows=cardRows(c),done=isDone(c),w=done?winners(rows):[];
+    h+='<div class="owe" data-act="opencard" data-c="'+esc(c.id)+'" style="cursor:pointer"><span>'+esc(fmtDate(c.card_date))+' · '+esc(c.title)+'</span><span class="sm">'+(w.length?'🏆 '+w.map(p=>esc(pname(p))).join(' & ')+' ('+fmtPts(rows[0].pts)+')':done?'—':'In progress')+'</span></div>';});
+  return h+'</section>';
+}
+
+function ledger(){
+  const items=[],net={};
+  for(const c of sortedCards()){
+    if(c.legacy||!isDone(c))continue;
+    const rows=cardRows(c),w=winners(rows);if(!w.length||rows.length<2)continue;
+    const buy=+c.buy_in||0,share=rows.length*buy/w.length;
+    for(const r of rows){net[r.pid]=(net[r.pid]||0)-buy+(w.includes(r.pid)?share:0);
+      if(!w.includes(r.pid))items.push({c,pid:r.pid,to:w,each:buy/w.length,amt:buy,paid:r.paid});}
+  }
+  return {items,net};
+}
+function renderMoney(){
+  const {items,net}=ledger();
+  const open=items.filter(i=>!i.paid),paid=items.filter(i=>i.paid);
+  const row=i=>'<div class="owe'+(i.paid?' paid':'')+'"><div><b>'+esc(pname(i.pid))+'</b> → '+i.to.map(p=>esc(pname(p))).join(' & ')+'<div class="sm">'+esc(fmtDate(i.c.card_date))+' · '+esc(i.c.title)+(i.to.length>1?' · '+fmt$(i.each)+' each':'')+'</div></div><div class="row" style="flex:0 0 auto"><span class="amt">'+fmt$(i.amt)+'</span>'+(S.isAdmin?'<button class="chip'+(i.paid?' on':'')+'" data-act="paid" data-c="'+esc(i.c.id)+'" data-p="'+esc(i.pid)+'" data-v="'+(i.paid?0:1)+'">'+(i.paid?'Paid':'Mark paid')+'</button>':(i.paid?'<span class="tag">paid</span>':''))+'</div></div>';
+  let h='<div class="note" style="margin-top:4px">Money moves outside the app (cash, Zelle, etc.). This page tracks who owes whom; the admin marks each one paid.</div>';
+  h+='<section class="box"><div class="bt">Still owed · '+fmt$(open.reduce((s,i)=>s+i.amt,0))+'</div>'+(open.length?open.map(row).join(''):'<div class="sm">All square. 🤝</div>')+'</section>';
+  const nr=Object.entries(net).sort((a,b)=>b[1]-a[1]);
+  if(nr.length)h+='<section class="box"><div class="bt">Net won / lost</div><table><tbody>'+nr.map(([p,v])=>'<tr><td class="l">'+esc(pname(p))+'</td><td class="pts" style="text-align:right;color:'+(v>0?'var(--green)':v<0?'var(--red2)':'inherit')+'">'+(v>0?'+':'')+fmt$(v)+'</td></tr>').join('')+'</tbody></table></section>';
+  if(paid.length)h+='<section class="box"><div class="bt">Settled</div>'+paid.slice(0,40).map(row).join('')+'</section>';
+  return h;
+}
+
+function renderAdmin(){
+  if(!S.isAdmin)return '<div class="empty">Admin only.</div>';
+  let h='';
+  const linked=new Set(Object.values(S.players).map(p=>p.user_id).filter(Boolean));
+  const pend=S.profiles.filter(p=>!linked.has(p.id));
+  const free=activePlayers().filter(p=>!p.user_id);
+  h+='<section class="box"><div class="bt">Join requests'+(pend.length?' · '+pend.length:'')+'</div>';
+  if(!pend.length)h+='<div class="sm">None right now. Send people the site link — they create a login and show up here.</div>';
+  pend.forEach(r=>{h+='<div style="padding:8px 0;border-top:1px solid var(--line)"><b>'+esc(r.name)+'</b> <span class="sm">'+esc(r.email||'')+'</span><div class="pl" style="border:0"><select data-role="linkto" data-u="'+esc(r.id)+'"><option value="new">Add as new player “'+esc(r.name)+'”</option>'+free.map(p=>'<option value="'+esc(p.id)+'"'+(p.name.toLowerCase()===String(r.name).toLowerCase()?' selected':'')+'>Link to '+esc(p.name)+'</option>').join('')+'</select><button class="mini on" data-act="approve" data-u="'+esc(r.id)+'">Approve</button><button class="mini" data-act="decline" data-u="'+esc(r.id)+'">Decline</button></div></div>';});
+  h+='</section>';
+  h+='<section class="box"><div class="bt">Settings</div><label class="chk"><input type="checkbox" data-chg="anyone"'+(S.settings.anyone_results?' checked':'')+'> Let any player enter fight results</label></section>';
+  h+='<section class="box"><div class="bt">New fight card</div><form data-form="newcard"><label>Name</label><input name="title" required placeholder="UFC 330"><div class="row"><div><label>Date</label><input name="date" type="date" required value="'+localDate()+'"></div><div><label>Buy-in $</label><input name="buy" type="number" min="0" step="1" value="25"></div></div><label>Picks lock at (optional)</label><input name="lock" type="datetime-local"><label>Fights — main event first, one per line</label><textarea name="fights" placeholder="Fighter A vs Fighter B&#10;Fighter C vs Fighter D @ 5:40pm"></textarea><div class="sm" style="margin:6px 0 10px">Add “@ 5:40pm” to lock a fight at its own start time; otherwise it locks at the card lock time.</div><button class="btn red full">Create card</button></form></section>';
+  const list=sortedCards();
+  if(list.length){
+    if(!S.adminCard||!S.cards[S.adminCard])S.adminCard=S.cards[S.cardId]?S.cardId:list[0].id;
+    const c=S.cards[S.adminCard];
+    h+='<section class="box"><div class="bt">Edit card</div><select data-chg="admincard">'+list.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===c.id?' selected':'')+'>'+esc(fmtDate(x.card_date))+' · '+esc(x.title)+'</option>').join('')+'</select>';
+    if(!c.legacy){
+      h+='<form data-form="editcard"><label>Name</label><input name="title" value="'+esc(c.title)+'"><div class="row"><div><label>Date</label><input name="date" type="date" value="'+esc(c.card_date)+'"></div><div><label>Buy-in $</label><input name="buy" type="number" min="0" value="'+esc(c.buy_in)+'"></div></div><label>Picks lock at</label><input name="lock" type="datetime-local" value="'+toLocalInput(c.lock_at)+'"><button class="btn full">Save details</button></form>';
+      h+='<label>Fights</label><div class="flist">'+c.fights.map((f,i)=>'<div class="pl"><span class="grow">'+(i+1)+'. '+esc(f.fighter_a)+' vs '+esc(f.fighter_b)+(f.starts_at?' <span class="tag">'+esc(fmtTime(f.starts_at))+'</span>':'')+'</span><button class="mini" data-act="fup" data-f="'+esc(f.id)+'" aria-label="Move up">↑</button><button class="mini" data-act="fdel" data-f="'+esc(f.id)+'" aria-label="Remove fight">✕</button></div>').join('')+'</div>';
+      h+='<form data-form="addfights"><label>Add fights</label><textarea name="fights" style="min-height:70px" placeholder="Fighter A vs Fighter B @ 7:00pm"></textarea><button class="btn full">Add to card</button></form>';
+      h+='<button class="btn full" data-act="final">'+(c.status==='final'?'Reopen card':'Mark card final')+'</button>';
+    }else h+='<div class="sm" style="margin:10px 0">Imported card — totals only.</div>';
+    h+='<button class="btn warn full" data-act="delcard">'+(S.confirmDel===c.id?'Tap again to delete for good':'Delete this card')+'</button></section>';
+  }
+  h+='<section class="box"><div class="bt">Players</div>'+Object.values(S.players).sort((a,b)=>a.sort-b.sort).map(p=>'<div class="pl"><input value="'+esc(p.name)+'" data-chg="pname" data-p="'+esc(p.id)+'" maxlength="24" aria-label="Player name"><span class="tag">'+(p.user_id?'has login':'no login')+'</span>'+(p.user_id?'<button class="mini" data-act="unlink" data-p="'+esc(p.id)+'">Unlink</button>':(!S.me?'<button class="mini" data-act="linkme" data-p="'+esc(p.id)+'">This is me</button>':''))+'<button class="mini" data-act="hide" data-p="'+esc(p.id)+'">'+(p.active===false?'Show':'Hide')+'</button></div>').join('');
+  h+='<form data-form="addplayer" class="row" style="margin-top:8px"><input name="n" maxlength="24" placeholder="New player name"><button class="btn">Add</button></form></section>';
+  return h;
+}
+
+/* ---------- actions ---------- */
+function parseFights(text,dateStr){
+  const out=[];
+  for(const raw of String(text||'').split(/\n/)){
+    const line=raw.trim();if(!line)continue;
+    const [names,time]=line.split('@');const m=names.split(/\s+vs\.?\s+/i);
+    if(m.length!==2||!m[0].trim()||!m[1].trim())continue;
+    let starts_at=null;
+    if(time&&dateStr){const t=time.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+      if(t){let hh=+t[1];const mm=+(t[2]||0);const ap=(t[3]||'').toLowerCase();if(ap==='pm'&&hh<12)hh+=12;if(ap==='am'&&hh===12)hh=0;
+        const [y,mo,d]=dateStr.split('-').map(Number);starts_at=new Date(y,mo-1,d,hh,mm).toISOString();}}
+    out.push({fighter_a:m[0].trim(),fighter_b:m[1].trim(),starts_at});
+  }
+  return out;
+}
+
+async function pick(fid,side){
+  const c=S.cards[S.cardId];if(!c||!S.me)return;
+  const f=c.fights.find(x=>x.id===fid);if(!f)return;
+  if(isLocked(c,f))return toast('That fight is locked.');
+  const cur=S.picks.find(p=>p.fight_id===fid&&p.player_id===S.me);
+  const before=S.picks.slice();
+  if(cur&&cur.side===side){
+    S.picks=S.picks.filter(p=>p!==cur);render();
+    try{await run(S.sb.from('picks').delete().eq('fight_id',fid).eq('player_id',S.me));}catch(e){S.picks=before;render();return fail(e);}
+  }else{
+    S.picks=S.picks.filter(p=>p!==cur).concat([{fight_id:fid,player_id:S.me,side}]);render();
+    try{await run(S.sb.from('picks').upsert({fight_id:fid,player_id:S.me,card_id:c.id,side},{onConflict:'fight_id,player_id'}));}catch(e){S.picks=before;render();return fail(e);}
+  }
+  scheduleReload(800);
+}
+async function act(fn){try{await fn();}catch(e){fail(e);}scheduleReload(0);}
+
+document.addEventListener('click',async ev=>{
+  const tb=ev.target.closest('#tabs button');
+  if(tb){S.tab=tb.dataset.tab;S.confirmDel=null;try{history.replaceState(null,'','#'+S.tab);}catch(e){}render();window.scrollTo(0,0);return;}
+  const t=ev.target.closest('[data-act]');if(!t||t.disabled)return;
+  const a=t.dataset.act,sb=S.sb,c=S.cards[S.cardId],ac=S.cards[S.adminCard];
+  if(a!=='delcard')S.confirmDel=null;
+  switch(a){
+    case 'signout':await sb.auth.signOut();return;
+    case 'authmode':S.authMode=S.authMode==='up'?'in':'up';return render();
+    case 'recheck':return checkMembership();
+    case 'pick':return pick(t.dataset.f,t.dataset.s);
+    case 'inpot':{const e=myEntry(c);return act(()=>run(sb.rpc('set_in_pot',{p_card:c.id,p_in:e?e.in_pot===false:true})));}
+    case 'bonus':{const r=(S.scores[c.id]||[]).find(x=>x.player_id===t.dataset.p);const v=Math.max(0,(+(r&&r.bonus)||0)+(+t.dataset.d));
+      return act(()=>run(sb.from('entries').update({bonus:v}).eq('card_id',c.id).eq('player_id',t.dataset.p)));}
+    case 'result':return act(async()=>{await run(sb.rpc('set_result',{p_fight:t.dataset.f,p_winner:t.dataset.w||null}));
+      const f=c.fights.find(x=>x.id===t.dataset.f);if(f)f.winner=t.dataset.w||null;
+      if(t.dataset.w&&isDone(c)){await loadAll();const w=winners(cardRows(S.cards[c.id]));if(w.length)toast('Card complete — '+w.map(pname).join(' & ')+(w.length>1?' split the pot!':' takes the pot!'));}});
+    case 'lock':{const f=c.fights.find(x=>x.id===t.dataset.f);return act(()=>run(sb.from('fights').update({locked:!f.locked}).eq('id',f.id)));}
+    case 'paid':return act(()=>run(sb.from('entries').update({paid:t.dataset.v==='1'}).eq('card_id',t.dataset.c).eq('player_id',t.dataset.p)));
+    case 'opencard':S.cardId=t.dataset.c;S.tab='card';try{await loadCardDetail();}catch(e){}render();window.scrollTo(0,0);return;
+    case 'approve':{const sel=document.querySelector('select[data-role="linkto"][data-u="'+t.dataset.u+'"]');const r=S.profiles.find(p=>p.id===t.dataset.u);if(!r)return;
+      return act(async()=>{
+        if(!sel||sel.value==='new'){const order=Math.max(0,...Object.values(S.players).map(p=>p.sort||0))+1;await run(sb.from('players').insert({name:r.name,user_id:r.id,sort:order}));}
+        else await run(sb.from('players').update({user_id:r.id}).eq('id',sel.value));
+        toast(r.name+' is in');});}
+    case 'decline':return act(()=>run(sb.from('profiles').delete().eq('id',t.dataset.u)));
+    case 'fdel':return act(()=>run(sb.from('fights').delete().eq('id',t.dataset.f)));
+    case 'fup':{const fs=ac.fights,i=fs.findIndex(f=>f.id===t.dataset.f);if(i<1)return;
+      return act(async()=>{await run(sb.from('fights').update({position:fs[i-1].position}).eq('id',fs[i].id));await run(sb.from('fights').update({position:fs[i].position}).eq('id',fs[i-1].id));});}
+    case 'final':return act(()=>run(sb.from('cards').update({status:ac.status==='final'?'open':'final'}).eq('id',ac.id)));
+    case 'delcard':if(S.confirmDel!==ac.id){S.confirmDel=ac.id;return render();}
+      S.confirmDel=null;return act(async()=>{await run(sb.from('cards').delete().eq('id',ac.id));S.adminCard=null;if(S.cardId===ac.id)S.cardId=null;toast('Card deleted');});
+    case 'unlink':return act(()=>run(sb.from('players').update({user_id:null}).eq('id',t.dataset.p)));
+    case 'linkme':return act(async()=>{await run(sb.from('players').update({user_id:S.uid}).eq('id',t.dataset.p));await checkMembership();});
+    case 'hide':{const p=S.players[t.dataset.p];return act(()=>run(sb.from('players').update({active:p.active===false}).eq('id',p.id)));}
+  }
+});
+
+document.addEventListener('change',async ev=>{
+  const t=ev.target.closest('[data-chg]');if(!t)return;
+  const k=t.dataset.chg;
+  if(k==='card'){S.cardId=t.value;try{await loadCardDetail();}catch(e){fail(e);}return render();}
+  if(k==='year'){S.year=t.value;return render();}
+  if(k==='admincard'){S.adminCard=t.value;S.confirmDel=null;return render();}
+  if(k==='anyone')return act(()=>run(S.sb.from('settings').update({anyone_results:t.checked}).eq('id',1)));
+  if(k==='pname'){const p=S.players[t.dataset.p],v=t.value.trim();if(!p||!v||v===p.name)return;return act(()=>run(S.sb.from('players').update({name:v}).eq('id',p.id)));}
+});
+document.addEventListener('focusout',()=>{setTimeout(()=>{if(S.pending)render();},0);});
+
+document.addEventListener('submit',async ev=>{
+  const f=ev.target.closest('form[data-form]');if(!f)return;ev.preventDefault();
+  const k=f.dataset.form,fd=new FormData(f),sb=S.sb;
+  if(document.activeElement)document.activeElement.blur();
+  if(k==='signin'||k==='signup'){
+    const email=String(fd.get('email')||'').trim(),password=String(fd.get('password')||'');
+    S.busy=true;render();
+    try{
+      if(k==='signin'){await run(sb.auth.signInWithPassword({email,password}));}
+      else{
+        const name=String(fd.get('name')||'').trim();
+        const data=await run(sb.auth.signUp({email,password,options:{data:{name}}}));
+        if(!data.session)toast('Check your email to confirm, then sign in.');
+      }
+    }catch(e){fail(e);}
+    S.busy=false;return render();
+  }
+  if(k==='request'){const name=String(fd.get('name')||'').trim();if(!name)return;
+    try{await run(sb.from('profiles').upsert({id:S.uid,name,email:S.email}));}catch(e){return fail(e);}
+    return checkMembership();}
+  if(k==='addplayer'){const n=String(fd.get('n')||'').trim();if(!n)return;const order=Math.max(0,...Object.values(S.players).map(p=>p.sort||0))+1;f.reset();
+    return act(()=>run(sb.from('players').insert({name:n,sort:order})));}
+  if(k==='newcard'){
+    const title=String(fd.get('title')||'').trim(),date=String(fd.get('date')||'');if(!title||!date)return toast('Add a name and date.');
+    const fights=parseFights(fd.get('fights'),date);
+    return act(async()=>{
+      const card=await run(sb.from('cards').insert({title,card_date:date,buy_in:+fd.get('buy')||0,lock_at:fromLocalInput(fd.get('lock'))}).select().single());
+      if(fights.length)await run(sb.from('fights').insert(fights.map((x,i)=>Object.assign({card_id:card.id,position:i},x))));
+      f.reset();S.adminCard=card.id;S.cardId=card.id;toast('Card created with '+fights.length+' fight'+(fights.length===1?'':'s'));
+    });
+  }
+  const ac=S.cards[S.adminCard];if(!ac)return;
+  if(k==='editcard')return act(async()=>{await run(sb.from('cards').update({title:String(fd.get('title')||ac.title).trim(),card_date:String(fd.get('date')||ac.card_date),buy_in:+fd.get('buy')||0,lock_at:fromLocalInput(fd.get('lock'))}).eq('id',ac.id));toast('Saved');});
+  if(k==='addfights'){const add=parseFights(fd.get('fights'),ac.card_date);if(!add.length)return toast('Use “Name vs Name”, one per line.');
+    const base=ac.fights.length?Math.max(...ac.fights.map(x=>x.position))+1:0;f.reset();
+    return act(()=>run(sb.from('fights').insert(add.map((x,i)=>Object.assign({card_id:ac.id,position:base+i},x)))));}
+});
+
+/* ---------- boot ---------- */
+let channel=null;
+async function checkMembership(){
+  const sb=S.sb;
+  try{
+    const [adm,pl,pr]=await Promise.all([
+      run(sb.from('admins').select('user_id').eq('user_id',S.uid).maybeSingle()),
+      run(sb.from('players').select('id').eq('user_id',S.uid).maybeSingle()),
+      run(sb.from('profiles').select('*').eq('id',S.uid).maybeSingle())
+    ]);
+    S.isAdmin=!!adm;S.me=pl?pl.id:null;S.profile=pr;S.member=S.isAdmin||!!S.me;
+  }catch(e){fail(e);}
+  if(S.member){
+    if(!channel)channel=sb.channel('fp-db').on('postgres_changes',{event:'*',schema:'public'},()=>scheduleReload()).subscribe();
+    try{await loadAll();}catch(e){S.offline=true;fail(e);}
+  }
+  render();
+}
+async function onSession(session){
+  S.session=session;S.uid=session?session.user.id:null;S.email=session?session.user.email:null;
+  if(!session){S.authMode='in';S.member=false;S.isAdmin=false;S.me=null;S.loaded=false;if(channel){S.sb.removeChannel(channel);channel=null;}return render();}
+  const name=(session.user.user_metadata||{}).name;
+  await checkMembership();
+  if(!S.member&&!S.profile&&name){try{await run(S.sb.from('profiles').upsert({id:S.uid,name,email:S.email}));}catch(e){}await checkMembership();}
+}
+
+{const h=location.hash.slice(1);if(['card','standings','money','admin'].includes(h))S.tab=h;}
+window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(['card','standings','money','admin'].includes(h)){S.tab=h;render();}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.member)scheduleReload(0);});
+setInterval(()=>{if(S.member&&S.tab==='card')render();},30000);
+setInterval(()=>{if(S.member&&document.visibilityState==='visible')scheduleReload(0);},120000);
+setInterval(()=>{if(S.session&&!S.member&&S.profile&&document.visibilityState==='visible')checkMembership();},20000);
+
+if(CFG.leagueName&&CFG.leagueName!=='Fight Picks'){document.title=CFG.leagueName;document.getElementById('brand').textContent=CFG.leagueName;}
+const configured=CFG.supabaseUrl&&!/YOUR-/.test(CFG.supabaseUrl)&&CFG.supabaseAnonKey&&!/YOUR-/.test(CFG.supabaseAnonKey);
+if(configured&&window.supabase){
+  S.sb=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true}});
+  let first=true;
+  S.sb.auth.onAuthStateChange((event,session)=>{
+    if(event==='TOKEN_REFRESHED'){S.session=session;return;}
+    if(!first&&event==='INITIAL_SESSION')return;first=false;
+    setTimeout(()=>onSession(session),0);
+  });
+}else render();
+})();
+</script>
+</body>
+</html>

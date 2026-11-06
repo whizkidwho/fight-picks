@@ -8,11 +8,6 @@ Logins are email + password. Anyone can create a login, but they see nothing unt
 
 ---
 
-
-PU=BTz$bkD8kke&a/1V3
-uYnw0hRP6IietZ6G
-
-
 ## What's in this folder
 
 | Path | What it is |

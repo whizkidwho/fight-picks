@@ -82,6 +82,10 @@ tr.me td.l{font-weight:700}
 .side.lost.picked{background:#2a0b0e;opacity:.75;text-decoration:line-through}
 .side:disabled{cursor:default}
 .ck{color:var(--green);font-size:18px}
+.fn{display:flex;flex-direction:column;align-items:center;gap:4px}
+.fx{display:flex;gap:5px;align-items:center;font-size:12px;font-weight:500;color:var(--mute)}
+.fx img{width:18px;height:12px;object-fit:cover;border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.12)}
+.wc{color:var(--mute)}
 .delta{font-family:Oswald,sans-serif;font-size:13px;margin-left:6px}
 .delta.pos{color:var(--green)} .delta.neg{color:var(--red2)}
 .who2{display:flex;gap:24px;font-size:12px;color:var(--mute);margin-top:6px}
@@ -294,7 +298,9 @@ function renderFights(c){
     const lk=isLocked(c,f),mp=S.picks.find(p=>p.fight_id===f.id&&p.player_id===S.me),my=mp?mp.side:null,t=f.starts_at||c.lock_at;
     const lab=i===0?'Main event':i===1?'Co-main':'';
     const side=s=>{const cls=['side'];if(my===s)cls.push('picked');if(f.winner===s)cls.push('won');if(f.winner&&f.winner!==s&&f.winner!=='nc')cls.push('lost');
-      return '<button class="'+cls.join(' ')+'" data-act="pick" data-f="'+esc(f.id)+'" data-s="'+s+'"'+(lk||!S.me?' disabled':'')+'>'+(f.winner===s?'<span class="ck">✓</span>':'')+'<span>'+esc(s==='a'?f.fighter_a:f.fighter_b)+'</span></button>';};
+      const flag=f[s+'_flag'],ctry=f[s+'_country'],rec=f[s+'_record'];
+      const meta=(flag&&/^https:\/\//.test(flag)?'<img src="'+esc(flag)+'" alt="'+esc(ctry||'')+'" title="'+esc(ctry||'')+'" loading="lazy" onerror="this.remove()">':'')+(rec?'<span>'+esc(rec)+'</span>':'');
+      return '<button class="'+cls.join(' ')+'" data-act="pick" data-f="'+esc(f.id)+'" data-s="'+s+'"'+(lk||!S.me?' disabled':'')+'>'+(f.winner===s?'<span class="ck">✓</span>':'')+'<span class="fn"><span>'+esc(s==='a'?f.fighter_a:f.fighter_b)+'</span>'+(meta?'<span class="fx">'+meta+'</span>':'')+'</span></button>';};
     let st='';if(f.winner==='nc')st='Draw / NC';else if(f.winner)st='Final';else if(lk)st='🔒 Locked';else if(t)st='Locks '+esc(fmtTime(t));
     let d='';if(my&&f.winner){const p=f.winner==='nc'?0:(my===f.winner?1:-0.5);d='<span class="delta '+(p>0?'pos':p<0?'neg':'')+'">'+(p>0?'+1':p<0?'−0.5':'0')+'</span>';}
     let who='';
@@ -305,7 +311,7 @@ function renderFights(c){
       if(f.winner)adm+='<button class="mini" data-act="result" data-f="'+esc(f.id)+'" data-w="">Clear</button>';
       else if(S.isAdmin)adm+='<button class="mini'+(f.locked?' on':'')+'" data-act="lock" data-f="'+esc(f.id)+'">'+(f.locked?'Unlock':'Lock now')+'</button>';
       adm+='</div>';}
-    return '<div class="fight"><div class="fm"><span class="lab">'+lab+'</span><span>'+st+d+'</span></div><div class="sides">'+side('a')+'<div class="vs">VS</div>'+side('b')+'</div>'+who+adm+'</div>';
+    return '<div class="fight"><div class="fm"><span><span class="lab">'+lab+'</span>'+(f.weight_class?'<span class="wc">'+(lab?' · ':'')+esc(f.weight_class)+'</span>':'')+'</span><span>'+st+d+'</span></div><div class="sides">'+side('a')+'<div class="vs">VS</div>'+side('b')+'</div>'+who+adm+'</div>';
   }).join('');
 }
 

@@ -86,6 +86,9 @@ tr.me td.l{font-weight:700}
 .fx{display:flex;gap:5px;align-items:center;font-size:12px;font-weight:500;color:var(--mute)}
 .fx img{width:18px;height:12px;object-fit:cover;border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.12)}
 .wc{color:var(--mute)}
+.btag{color:var(--gold);font-weight:700;margin-left:6px}
+.bpl{font-size:12px;color:var(--gold);margin-top:6px;text-align:center}
+.mini.m{border-color:#5a4a12}.mini.m.on{background:var(--gold);border-color:var(--gold);color:#241b00}
 .delta{font-family:Oswald,sans-serif;font-size:13px;margin-left:6px}
 .delta.pos{color:var(--green)} .delta.neg{color:var(--red2)}
 .who2{display:flex;gap:24px;font-size:12px;color:var(--mute);margin-top:6px}
@@ -106,6 +109,9 @@ tr.me td.l{font-weight:700}
 .flist{font-size:13px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(120px);background:#26262d;border:1px solid var(--line);padding:11px 16px;border-radius:12px;font-size:14px;transition:transform .25s,opacity .25s;opacity:0;pointer-events:none;z-index:50;max-width:90vw;text-align:center}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+a.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:inherit}
+.st-ok,.st-wait,.st-no{font-weight:600;white-space:nowrap}.st-ok{color:var(--green)}.st-wait{color:var(--gold)}.st-no{color:var(--red2)}
+.owe .row{flex-wrap:wrap;justify-content:flex-end}
 .chk{display:flex;gap:10px;align-items:center;font-size:14px;text-transform:none;letter-spacing:0;color:var(--text)}
 .chk input{width:22px;height:22px;min-height:0}
 .auth{max-width:420px;margin:24px auto}
@@ -130,7 +136,7 @@ tr.me td.l{font-weight:700}
 (function(){
 const CFG=window.FP_CONFIG||{};
 const S={sb:null,session:null,uid:null,email:null,me:null,isAdmin:false,member:false,profile:null,
-  players:{},cards:{},scores:{},settings:{},profiles:[],picks:[],counts:{},
+  players:{},cards:{},scores:{},settings:{},profiles:[],picks:[],counts:{},bonus:[],bonusSel:null,
   tab:'card',cardId:null,year:'all',adminCard:null,authMode:'in',confirmDel:null,pending:false,busy:false,loaded:false,offline:false};
 const $app=document.getElementById('app');
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -171,13 +177,15 @@ async function loadAll(){
   S.loaded=true;S.offline=false;
 }
 async function loadCardDetail(){
-  const c=S.cards[S.cardId];S.picks=[];S.counts={};
+  const c=S.cards[S.cardId];S.picks=[];S.counts={};S.bonus=[];
   if(!c||c.legacy)return;
   const [pk,ct]=await Promise.all([
     run(S.sb.from('picks').select('fight_id,player_id,side').eq('card_id',c.id)),
     run(S.sb.rpc('pick_counts',{p_card:c.id}))
   ]);
   S.picks=pk||[];(ct||[]).forEach(r=>S.counts[r.player_id]=r.n);
+  S.bonus=[];
+  if(bonusOn()){const r=await S.sb.from('bonus_picks').select('fight_id,player_id,method').eq('card_id',c.id);if(!r.error)S.bonus=r.data||[];}
 }
 let reloadT=null;
 function scheduleReload(ms){clearTimeout(reloadT);reloadT=setTimeout(async()=>{try{await loadAll();}catch(e){console.warn(e);S.offline=true;}render();},ms==null?400:ms);}
@@ -186,11 +194,19 @@ function scheduleReload(ms){clearTimeout(reloadT);reloadT=setTimeout(async()=>{t
 const activePlayers=()=>Object.values(S.players).filter(p=>p.active!==false).sort((a,b)=>(a.sort-b.sort)||a.name.localeCompare(b.name));
 const pname=pid=>(S.players[pid]&&S.players[pid].name)||'Someone';
 const canResults=()=>S.isAdmin||(!!S.settings.anyone_results&&!!S.me);
+const potOn=()=>('banker_venmo' in S.settings);
+const bonusOn=()=>('method_bonus' in S.settings);
+const MSHORT={ko:'KO/TKO',sub:'SUB',dec:'DEC'},MLABEL={ko:'KO/TKO',sub:'Submission',dec:'Decision'};
+const banker=()=>S.settings.banker_player_id||null;
+const bankerVenmo=()=>S.settings.banker_venmo||'';
+const isBanker=pid=>!!pid&&pid===banker();
+const buyinOk=r=>!!r.paid||isBanker(r.pid);
+function venmoUrl(user,amount,note){return 'https://venmo.com/'+encodeURIComponent(String(user||'').replace(/^@/,''))+'?txn=pay&amount='+(+amount).toFixed(2)+'&note='+encodeURIComponent(note)+'&audience=private';}
 const sortedCards=()=>Object.values(S.cards).sort((a,b)=>String(b.card_date).localeCompare(String(a.card_date))||String(b.created_at).localeCompare(String(a.created_at)));
 function isLocked(c,f){if(c.status==='final'||c.legacy||f.locked||f.winner)return true;const t=f.starts_at||c.lock_at;return !!(t&&Date.now()>=Date.parse(t));}
 function isDone(c){return !!(c.legacy||c.status==='final'||(c.fights.length&&c.fights.every(f=>f.winner)));}
 function cardRows(c){
-  return (S.scores[c.id]||[]).filter(r=>r.in_pot!==false).map(r=>({pid:r.player_id,w:r.wins,l:r.losses,b:+r.bonus||0,paid:!!r.paid,pts:r.wins-0.5*r.losses+(+r.bonus||0)}))
+  return (S.scores[c.id]||[]).filter(r=>r.in_pot!==false).map(r=>({pid:r.player_id,w:r.wins,l:r.losses,b:+r.bonus||0,paid:!!r.paid,sent:!!r.sent,payout_sent:!!r.payout_sent,pts:r.wins-0.5*r.losses+(+r.bonus||0)}))
     .sort((a,b)=>(b.pts-a.pts)||(b.w-a.w)||pname(a.pid).localeCompare(pname(b.pid)));
 }
 const myEntry=c=>(S.scores[c.id]||[]).find(r=>r.player_id===S.me&&!r.legacy);
@@ -261,7 +277,7 @@ function renderCardTab(){
   const win=done?winners(rows):[],lead=!done&&anyRes?winners(rows):[];
   const buy=+c.buy_in||0,pot=rows.length*buy;
   let h='<select data-chg="card" aria-label="Fight card">'+list.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===c.id?' selected':'')+'>'+esc(fmtDate(x.card_date))+' · '+esc(x.title)+'</option>').join('')+'</select>';
-  h+='<section class="hero"><div class="ht">'+esc(c.title)+'</div><div class="hs">'+esc(fmtDate(c.card_date,true))+' '+statusChip(c)+'</div><div class="pot"><div>'+(c.legacy?'':'<span class="big">'+fmt$(pot)+'</span><span class="sm">'+rows.length+' in × '+fmt$(buy)+'</span>')+'</div>';
+  h+='<section class="hero"><div class="ht">'+esc(c.title)+'</div><div class="hs">'+esc(fmtDate(c.card_date,true))+' '+statusChip(c)+'</div><div class="pot"><div>'+(c.legacy?'':'<span class="big">'+fmt$(pot)+'</span><span class="sm">'+rows.length+' in × '+fmt$(buy)+(potOn()&&buy>0&&rows.length?' · '+fmt$(rows.filter(buyinOk).length*buy)+' collected':'')+'</span>')+'</div>';
   if(win.length)h+='<div class="champ">🏆 '+win.map(p=>esc(pname(p))).join(' & ')+(win.length>1?' split it':'')+'</div>';
   else if(lead.length)h+='<div class="sm">Leading: <b style="color:var(--text)">'+lead.map(p=>esc(pname(p))).join(', ')+'</b></div>';
   h+='</div></section>';
@@ -271,12 +287,46 @@ function renderCardTab(){
     if(e&&!done)h+='<button class="chip'+(e.in_pot===false?'':' on')+'" data-act="inpot">'+(e.in_pot===false?'Sitting out — tap to join':'✓ In for '+fmt$(buy))+'</button>';
     else if(!e&&!done)h+='<span class="sm">Make a pick to join</span>';
     h+='</div>';
+    if(bonusOn()&&c.fights.length)h+=renderBonusBox(c);
+    if(potOn()&&e&&e.in_pot!==false&&buy>0&&!isBanker(S.me)){
+      if(e.paid)h+='<div class="box mine"><span class="sm">Buy-in</span><span class="st-ok">Received ✓</span></div>';
+      else{
+        h+='<div class="box"><div class="bt">Your buy-in · '+fmt$(buy)+'</div>';
+        if(bankerVenmo())h+='<div class="row"><a class="btn red" style="flex:1" href="'+esc(venmoUrl(bankerVenmo(),buy,c.title+' buy-in'))+'" target="_blank" rel="noopener">Pay '+fmt$(buy)+' on Venmo</a><button class="chip'+(e.sent?' on':'')+'" data-act="sent">'+(e.sent?'Sent ✓':'I sent it')+'</button></div><div class="sm" style="margin-top:6px">'+(e.sent?'Waiting for '+esc(pname(banker()))+' to confirm.':'Goes to @'+esc(bankerVenmo())+'. Tap “I sent it” after you pay.')+'</div>';
+        else h+='<div class="sm">The pot holder hasn’t added their Venmo yet.</div>';
+        h+='</div>';
+      }
+    }
   }else if(!c.legacy&&!S.me)h+='<div class="banner">Your login isn’t linked to a player, so you can’t make picks. Link yourself in Admin → Players.</div>';
   h+=renderBoard(c,rows,done?win:lead,anyRes);
   if(c.legacy)h+='<div class="note">Imported from the spreadsheet — card totals only.</div>';
   else h+=renderFights(c);
-  h+='<div class="rules">Scoring: right pick +1 · wrong pick −0.5 · no pick 0 · draw/no contest 0 · plus any bonus. Highest total takes the pot; a tie splits it. Each fight locks at its start time, and everyone’s picks show once it locks.</div>';
+  h+='<div class="rules">Scoring: right pick +1 · wrong pick −0.5 · no pick 0 · draw/no contest 0 · plus any bonus (★ bonus pick: right method on your one bonus fight). Highest total takes the pot; a tie splits it. Each fight locks at its start time, and everyone’s picks show once it locks.</div>';
   return h;
+}
+
+function renderBonusBox(c){
+  const pts=+S.settings.method_bonus||0,needs=S.settings.method_needs_winner!==false;
+  const mb=S.bonus.find(b=>b.player_id===S.me),bf=mb?c.fights.find(f=>f.id===mb.fight_id):null;
+  const vs=f=>esc(f.fighter_a)+' vs '+esc(f.fighter_b);
+  let h='<div class="box"><div class="bt">★ Bonus pick · +'+fmtPts(pts)+'</div>';
+  if(bf&&isLocked(c,bf)){
+    let res='<span class="tag">locked</span>';
+    if(bf.winner){const mp=S.picks.find(p=>p.fight_id===bf.id&&p.player_id===S.me);
+      const ok=bf.winner!=='nc'&&bf.method&&bf.method===mb.method&&(!needs||(mp&&mp.side===bf.winner));
+      res=bf.method||bf.winner==='nc'?'<span class="'+(ok?'st-ok':'st-no')+'">'+(ok?'+'+fmtPts(pts):'0')+'</span>':'<span class="st-wait">waiting on method</span>';}
+    h+='<div class="mine"><div><b>'+vs(bf)+'</b><div class="sm">by '+MLABEL[mb.method]+'</div></div>'+res+'</div>';
+  }else{
+    const open=c.fights.filter(f=>!isLocked(c,f));
+    if(!open.length)h+='<div class="sm">All fights are locked.</div>';
+    else{
+      const sel=(S.bonusSel&&open.some(f=>f.id===S.bonusSel))?S.bonusSel:(bf?bf.id:open[0].id);S.bonusSelResolved=sel;
+      h+='<select data-chg="bonusfight" aria-label="Bonus fight">'+open.map(f=>'<option value="'+esc(f.id)+'"'+(f.id===sel?' selected':'')+'>'+vs(f)+'</option>').join('')+'</select>';
+      h+='<div class="row" style="margin-top:8px">'+['ko','sub','dec'].map(m=>'<button class="chip'+(mb&&mb.fight_id===sel&&mb.method===m?' on':'')+'" data-act="bonusm" data-m="'+m+'" style="flex:1"'+(S.me?'':' disabled')+'>'+MLABEL[m]+'</button>').join('')+'</div>';
+      h+='<div class="sm" style="margin-top:6px">'+(mb&&bf?'Your bonus: <b style="color:var(--text)">'+vs(bf)+'</b> by '+MLABEL[mb.method]+'. ':'Pick one fight and how it ends. ')+'Right method'+(needs?' + right winner':'')+' = +'+fmtPts(pts)+'.</div>';
+    }
+  }
+  return h+'</div>';
 }
 
 function renderBoard(c,rows,top,anyRes){
@@ -295,23 +345,27 @@ function renderFights(c){
   const cr=canResults()&&c.status!=='final';
   const inPot=new Set((S.scores[c.id]||[]).filter(r=>r.in_pot!==false).map(r=>r.player_id));
   return c.fights.map((f,i)=>{
+    const myB=S.bonus.find(b=>b.player_id===S.me);
     const lk=isLocked(c,f),mp=S.picks.find(p=>p.fight_id===f.id&&p.player_id===S.me),my=mp?mp.side:null,t=f.starts_at||c.lock_at;
     const lab=i===0?'Main event':i===1?'Co-main':'';
     const side=s=>{const cls=['side'];if(my===s)cls.push('picked');if(f.winner===s)cls.push('won');if(f.winner&&f.winner!==s&&f.winner!=='nc')cls.push('lost');
       const flag=f[s+'_flag'],ctry=f[s+'_country'],rec=f[s+'_record'];
       const meta=(flag&&/^https:\/\//.test(flag)?'<img src="'+esc(flag)+'" alt="'+esc(ctry||'')+'" title="'+esc(ctry||'')+'" loading="lazy" onerror="this.remove()">':'')+(rec?'<span>'+esc(rec)+'</span>':'');
       return '<button class="'+cls.join(' ')+'" data-act="pick" data-f="'+esc(f.id)+'" data-s="'+s+'"'+(lk||!S.me?' disabled':'')+'>'+(f.winner===s?'<span class="ck">✓</span>':'')+'<span class="fn"><span>'+esc(s==='a'?f.fighter_a:f.fighter_b)+'</span>'+(meta?'<span class="fx">'+meta+'</span>':'')+'</span></button>';};
-    let st='';if(f.winner==='nc')st='Draw / NC';else if(f.winner)st='Final';else if(lk)st='🔒 Locked';else if(t)st='Locks '+esc(fmtTime(t));
+    let st='';if(f.winner==='nc')st='Draw / NC';else if(f.winner)st='Final'+(f.method?' · '+MSHORT[f.method]:'');else if(lk)st='🔒 Locked';else if(t)st='Locks '+esc(fmtTime(t));
     let d='';if(my&&f.winner){const p=f.winner==='nc'?0:(my===f.winner?1:-0.5);d='<span class="delta '+(p>0?'pos':p<0?'neg':'')+'">'+(p>0?'+1':p<0?'−0.5':'0')+'</span>';}
     let who='';
     if(lk){const fp=S.picks.filter(p=>p.fight_id===f.id&&inPot.has(p.player_id));const A=fp.filter(p=>p.side==='a').map(p=>pname(p.player_id)),B=fp.filter(p=>p.side==='b').map(p=>pname(p.player_id));
-      who='<div class="who2"><div>'+(A.length?esc(A.join(', ')):'—')+'</div><div>'+(B.length?esc(B.join(', ')):'—')+'</div></div>';}
+      who='<div class="who2"><div>'+(A.length?esc(A.join(', ')):'—')+'</div><div>'+(B.length?esc(B.join(', ')):'—')+'</div></div>';
+      const bl=S.bonus.filter(b=>b.fight_id===f.id&&inPot.has(b.player_id));
+      if(bl.length)who+='<div class="bpl">★ '+bl.map(b=>esc(pname(b.player_id))+' ('+MSHORT[b.method]+')').join(', ')+'</div>';}
     let adm='';
     if(cr){adm='<div class="adm">'+[['a',short(f.fighter_a)+' won'],['b',short(f.fighter_b)+' won'],['nc','Draw/NC']].map(([w,l])=>'<button class="mini'+(f.winner===w?' on':'')+'" data-act="result" data-f="'+esc(f.id)+'" data-w="'+w+'">'+esc(l)+'</button>').join('');
       if(f.winner)adm+='<button class="mini" data-act="result" data-f="'+esc(f.id)+'" data-w="">Clear</button>';
+      if(bonusOn()&&(f.winner==='a'||f.winner==='b'))adm+=['ko','sub','dec'].map(m=>'<button class="mini m'+(f.method===m?' on':'')+'" data-act="method" data-f="'+esc(f.id)+'" data-m="'+m+'">'+MSHORT[m]+'</button>').join('');
       else if(S.isAdmin)adm+='<button class="mini'+(f.locked?' on':'')+'" data-act="lock" data-f="'+esc(f.id)+'">'+(f.locked?'Unlock':'Lock now')+'</button>';
       adm+='</div>';}
-    return '<div class="fight"><div class="fm"><span><span class="lab">'+lab+'</span>'+(f.weight_class?'<span class="wc">'+(lab?' · ':'')+esc(f.weight_class)+'</span>':'')+'</span><span>'+st+d+'</span></div><div class="sides">'+side('a')+'<div class="vs">VS</div>'+side('b')+'</div>'+who+adm+'</div>';
+    return '<div class="fight"><div class="fm"><span><span class="lab">'+lab+'</span>'+(f.weight_class?'<span class="wc">'+(lab?' · ':'')+esc(f.weight_class)+'</span>':'')+(myB&&myB.fight_id===f.id?'<span class="btag">★ '+MSHORT[myB.method]+'</span>':'')+'</span><span>'+st+d+'</span></div><div class="sides">'+side('a')+'<div class="vs">VS</div>'+side('b')+'</div>'+who+adm+'</div>';
   }).join('');
 }
 
@@ -345,14 +399,50 @@ function ledger(){
   return {items,net};
 }
 function renderMoney(){
-  const {items,net}=ledger();
-  const open=items.filter(i=>!i.paid),paid=items.filter(i=>i.paid);
-  const row=i=>'<div class="owe'+(i.paid?' paid':'')+'"><div><b>'+esc(pname(i.pid))+'</b> → '+i.to.map(p=>esc(pname(p))).join(' & ')+'<div class="sm">'+esc(fmtDate(i.c.card_date))+' · '+esc(i.c.title)+(i.to.length>1?' · '+fmt$(i.each)+' each':'')+'</div></div><div class="row" style="flex:0 0 auto"><span class="amt">'+fmt$(i.amt)+'</span>'+(S.isAdmin?'<button class="chip'+(i.paid?' on':'')+'" data-act="paid" data-c="'+esc(i.c.id)+'" data-p="'+esc(i.pid)+'" data-v="'+(i.paid?0:1)+'">'+(i.paid?'Paid':'Mark paid')+'</button>':(i.paid?'<span class="tag">paid</span>':''))+'</div></div>';
-  let h='<div class="note" style="margin-top:4px">Money moves outside the app (cash, Zelle, etc.). This page tracks who owes whom; the admin marks each one paid.</div>';
-  h+='<section class="box"><div class="bt">Still owed · '+fmt$(open.reduce((s,i)=>s+i.amt,0))+'</div>'+(open.length?open.map(row).join(''):'<div class="sm">All square. 🤝</div>')+'</section>';
+  const {net}=ledger();let h='';
+  if(!potOn()){
+    h+='<div class="note" style="margin-top:4px">'+(S.isAdmin?'Run <b>supabase/5_venmo_pot.sql</b> to turn on the Venmo pot.':'Settle up with the admin.')+'</div>';
+  }else{
+    if(S.me){const mv=(S.players[S.me]||{}).venmo||'';
+      h+='<section class="box"><div class="bt">Your Venmo</div><form data-form="myvenmo" class="row"><input name="v" placeholder="@username" value="'+esc(mv?'@'+mv:'')+'" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="btn">Save</button></form><div class="sm" style="margin-top:6px">So you can be paid when you take the pot.</div></section>';}
+    const bp=banker();
+    if(!bankerVenmo())h+='<div class="banner">'+(S.isAdmin?'Add your Venmo username in Admin → Settings so everyone can pay into the pot.':'The pot holder hasn’t added their Venmo yet.')+'</div>';
+    let held=0,blocks='';
+    const cards=sortedCards().filter(c=>!c.legacy&&cardRows(c).length).slice(0,12);
+    for(const c of cards){
+      const rows=cardRows(c),buy=+c.buy_in||0,pot=rows.length*buy,done=isDone(c),w=done?winners(rows):[],share=w.length?pot/w.length:0;
+      const coll=rows.filter(buyinOk).length*buy;
+      const out=rows.filter(r=>w.includes(r.pid)&&(r.payout_sent||isBanker(r.pid))).length*share;
+      held+=coll-out;
+      let b='<section class="box"><div class="bt">'+esc(fmtDate(c.card_date))+' · '+esc(c.title)+'</div><div class="sm" style="margin-bottom:6px">Pot '+fmt$(pot)+' · '+fmt$(coll)+' collected</div>';
+      rows.slice().sort((a,b)=>pname(a.pid).localeCompare(pname(b.pid))).forEach(r=>{
+        let st,btn='';
+        if(isBanker(r.pid))st='<span class="tag">pot holder</span>';
+        else if(r.paid)st='<span class="st-ok">Got it ✓</span>';
+        else if(r.sent)st='<span class="st-wait">Says sent</span>';
+        else st='<span class="st-no">Not paid</span>';
+        if(S.isAdmin&&!isBanker(r.pid))btn='<button class="chip'+(r.paid?' on':'')+'" data-act="paid" data-c="'+esc(c.id)+'" data-p="'+esc(r.pid)+'" data-v="'+(r.paid?0:1)+'">'+(r.paid?'Undo':'Got it')+'</button>';
+        b+='<div class="owe"><span>'+esc(pname(r.pid))+'</span><span class="row" style="flex:0 0 auto;gap:10px">'+st+btn+'</span></div>';
+      });
+      if(done&&w.length){
+        b+='<div class="bt" style="margin-top:10px">Payout'+(w.length>1?' · split':'')+'</div>';
+        w.forEach(pid=>{
+          const r=rows.find(x=>x.pid===pid),pv=(S.players[pid]||{}).venmo;let right;
+          if(isBanker(pid))right='<span class="tag">kept by pot holder</span>';
+          else if(r.payout_sent)right='<span class="st-ok">Paid ✓</span>'+(S.isAdmin?'<button class="chip" data-act="payout" data-c="'+esc(c.id)+'" data-p="'+esc(pid)+'" data-v="0">Undo</button>':'');
+          else if(S.isAdmin)right=(pv?'<a class="chip" style="text-decoration:none;color:inherit" href="'+esc(venmoUrl(pv,share,c.title+' winnings'))+'" target="_blank" rel="noopener">Pay on Venmo</a>':'<span class="tag">no Venmo saved</span>')+'<button class="chip" data-act="payout" data-c="'+esc(c.id)+'" data-p="'+esc(pid)+'" data-v="1">Mark sent</button>';
+          else right='<span class="st-wait">Pending</span>';
+          b+='<div class="owe"><div><b>🏆 '+esc(pname(pid))+'</b><div class="sm">'+(pv?'@'+esc(pv):'')+'</div></div><span class="row" style="flex:0 0 auto;gap:8px"><span class="amt">'+fmt$(share)+'</span>'+right+'</span></div>';
+        });
+      }
+      blocks+=b+'</section>';
+    }
+    h+='<section class="box"><div class="bt">Pot holder</div><div class="mine"><div><b>'+(bp?esc(pname(bp)):'Not set')+'</b><div class="sm">'+(bankerVenmo()?'@'+esc(bankerVenmo()):'')+'</div></div><div style="text-align:right"><div class="amt" style="font-family:Oswald,sans-serif;font-size:22px;color:var(--gold)">'+fmt$(held)+'</div><div class="sm">holding now</div></div></div></section>';
+    h+=blocks||'<div class="empty">No buy-ins yet.</div>';
+  }
   const nr=Object.entries(net).sort((a,b)=>b[1]-a[1]);
   if(nr.length)h+='<section class="box"><div class="bt">Net won / lost</div><table><tbody>'+nr.map(([p,v])=>'<tr><td class="l">'+esc(pname(p))+'</td><td class="pts" style="text-align:right;color:'+(v>0?'var(--green)':v<0?'var(--red2)':'inherit')+'">'+(v>0?'+':'')+fmt$(v)+'</td></tr>').join('')+'</tbody></table></section>';
-  if(paid.length)h+='<section class="box"><div class="bt">Settled</div>'+paid.slice(0,40).map(row).join('')+'</section>';
+  h+='<div class="note">Money moves in Venmo, not in this app. The buttons just open Venmo with the amount filled in.</div>';
   return h;
 }
 
@@ -366,7 +456,7 @@ function renderAdmin(){
   if(!pend.length)h+='<div class="sm">None right now. Send people the site link — they create a login and show up here.</div>';
   pend.forEach(r=>{h+='<div style="padding:8px 0;border-top:1px solid var(--line)"><b>'+esc(r.name)+'</b> <span class="sm">'+esc(r.email||'')+'</span><div class="pl" style="border:0"><select data-role="linkto" data-u="'+esc(r.id)+'"><option value="new">Add as new player “'+esc(r.name)+'”</option>'+free.map(p=>'<option value="'+esc(p.id)+'"'+(p.name.toLowerCase()===String(r.name).toLowerCase()?' selected':'')+'>Link to '+esc(p.name)+'</option>').join('')+'</select><button class="mini on" data-act="approve" data-u="'+esc(r.id)+'">Approve</button><button class="mini" data-act="decline" data-u="'+esc(r.id)+'">Decline</button></div></div>';});
   h+='</section>';
-  h+='<section class="box"><div class="bt">Settings</div><label class="chk"><input type="checkbox" data-chg="anyone"'+(S.settings.anyone_results?' checked':'')+'> Let any player enter fight results</label></section>';
+  h+='<section class="box"><div class="bt">Settings</div><label class="chk"><input type="checkbox" data-chg="anyone"'+(S.settings.anyone_results?' checked':'')+'> Let any player enter fight results</label>'+(bonusOn()?'<div class="row" style="margin-top:12px"><div><label>★ Bonus pick points</label><input type="number" min="0" step="0.5" data-chg="mbonus" value="'+esc(S.settings.method_bonus)+'"></div></div><label class="chk" style="margin-top:8px"><input type="checkbox" data-chg="mneeds"'+(S.settings.method_needs_winner!==false?' checked':'')+'> Bonus also needs the right winner</label>':'')+(potOn()?'<form data-form="bankervenmo" style="margin-top:12px"><label>Your Venmo (you hold the pot)</label><div class="row"><input name="v" placeholder="@username" value="'+esc(bankerVenmo()?'@'+bankerVenmo():'')+'" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="btn">Save</button></div></form>':'')+'</section>';
   if('auto_import' in S.settings){
     const sy=S.sync||{};const when=sy.processed_at?new Date(sy.processed_at).toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'}):'never';
     h+='<section class="box"><div class="bt">Auto-import from ESPN</div><label class="chk"><input type="checkbox" data-chg="autoimp"'+(S.settings.auto_import?' checked':'')+'> Add new UFC cards and results automatically</label>'+
@@ -446,6 +536,18 @@ document.addEventListener('click',async ev=>{
       const f=c.fights.find(x=>x.id===t.dataset.f);if(f)f.winner=t.dataset.w||null;
       if(t.dataset.w&&isDone(c)){await loadAll();const w=winners(cardRows(S.cards[c.id]));if(w.length)toast('Card complete — '+w.map(pname).join(' & ')+(w.length>1?' split the pot!':' takes the pot!'));}});
     case 'lock':{const f=c.fights.find(x=>x.id===t.dataset.f);return act(()=>run(sb.from('fights').update({locked:!f.locked}).eq('id',f.id)));}
+    case 'sent':{const e=myEntry(c);return act(()=>run(sb.rpc('claim_sent',{p_card:c.id,p_sent:!(e&&e.sent)})));}
+    case 'bonusm':{const fid=S.bonusSelResolved,m=t.dataset.m;if(!fid||!S.me)return;
+      const f=c.fights.find(x=>x.id===fid);if(!f||isLocked(c,f))return toast('That fight is locked.');
+      const mb=S.bonus.find(b=>b.player_id===S.me),before=S.bonus.slice();
+      if(mb&&mb.fight_id===fid&&mb.method===m){S.bonus=S.bonus.filter(b=>b!==mb);render();
+        try{await run(sb.from('bonus_picks').delete().eq('card_id',c.id).eq('player_id',S.me));}catch(e){S.bonus=before;render();return fail(e);}}
+      else{S.bonus=S.bonus.filter(b=>b!==mb).concat([{fight_id:fid,player_id:S.me,method:m}]);render();
+        try{await run(sb.from('bonus_picks').upsert({card_id:c.id,player_id:S.me,fight_id:fid,method:m},{onConflict:'card_id,player_id'}));}catch(e){S.bonus=before;render();return fail(e);}}
+      return scheduleReload(800);}
+    case 'method':{const f=c.fights.find(x=>x.id===t.dataset.f);const m=f&&f.method===t.dataset.m?null:t.dataset.m;
+      return act(()=>run(sb.rpc('set_method',{p_fight:t.dataset.f,p_method:m})));}
+    case 'payout':return act(()=>run(sb.from('entries').update({payout_sent:t.dataset.v==='1'}).eq('card_id',t.dataset.c).eq('player_id',t.dataset.p)));
     case 'paid':return act(()=>run(sb.from('entries').update({paid:t.dataset.v==='1'}).eq('card_id',t.dataset.c).eq('player_id',t.dataset.p)));
     case 'opencard':S.cardId=t.dataset.c;S.tab='card';try{await loadCardDetail();}catch(e){}render();window.scrollTo(0,0);return;
     case 'approve':{const sel=document.querySelector('select[data-role="linkto"][data-u="'+t.dataset.u+'"]');const r=S.profiles.find(p=>p.id===t.dataset.u);if(!r)return;
@@ -476,6 +578,9 @@ document.addEventListener('change',async ev=>{
   if(k==='card'){S.cardId=t.value;try{await loadCardDetail();}catch(e){fail(e);}return render();}
   if(k==='year'){S.year=t.value;return render();}
   if(k==='admincard'){S.adminCard=t.value;S.confirmDel=null;return render();}
+  if(k==='bonusfight'){S.bonusSel=t.value;return render();}
+  if(k==='mbonus'){const v=Math.max(0,+t.value||0);return act(()=>run(S.sb.from('settings').update({method_bonus:v}).eq('id',1)));}
+  if(k==='mneeds')return act(()=>run(S.sb.from('settings').update({method_needs_winner:t.checked}).eq('id',1)));
   if(k==='autoimp')return act(()=>run(S.sb.from('settings').update({auto_import:t.checked}).eq('id',1)));
   if(k==='defbuy'){const v=Math.max(0,+t.value||0);return act(()=>run(S.sb.from('settings').update({default_buy_in:v}).eq('id',1)));}
   if(k==='autosync'){const c=S.cards[S.adminCard];return act(()=>run(S.sb.from('cards').update({auto_sync:t.checked}).eq('id',c.id)));}
@@ -504,6 +609,11 @@ document.addEventListener('submit',async ev=>{
   if(k==='request'){const name=String(fd.get('name')||'').trim();if(!name)return;
     try{await run(sb.from('profiles').upsert({id:S.uid,name,email:S.email}));}catch(e){return fail(e);}
     return checkMembership();}
+  if(k==='myvenmo'){const v=String(fd.get('v')||'').trim().replace(/^@/,'');return act(async()=>{await run(sb.rpc('set_my_venmo',{p_venmo:v}));toast(v?'Venmo saved':'Venmo removed');});}
+  if(k==='bankervenmo'){const v=String(fd.get('v')||'').trim().replace(/^@/,'');if(v&&!/^[A-Za-z0-9_-]{1,40}$/.test(v))return toast('Venmo usernames use letters, numbers, - and _ only');
+    if(!S.me)return toast('Link your login to a player first (Admin → Players).');
+    return act(async()=>{await run(sb.from('settings').update({banker_venmo:v||null,banker_player_id:v?S.me:null}).eq('id',1));
+      try{await run(sb.rpc('set_my_venmo',{p_venmo:v}));}catch(e){}toast('Saved — buy-ins go to @'+v);});}
   if(k==='addplayer'){const n=String(fd.get('n')||'').trim();if(!n)return;const order=Math.max(0,...Object.values(S.players).map(p=>p.sort||0))+1;f.reset();
     return act(()=>run(sb.from('players').insert({name:n,sort:order})));}
   if(k==='newcard'){

@@ -540,10 +540,10 @@ document.addEventListener('click',async ev=>{
     case 'bonusm':{const fid=S.bonusSelResolved,m=t.dataset.m;if(!fid||!S.me)return;
       const f=c.fights.find(x=>x.id===fid);if(!f||isLocked(c,f))return toast('That fight is locked.');
       const mb=S.bonus.find(b=>b.player_id===S.me),before=S.bonus.slice();
-      if(mb&&mb.fight_id===fid&&mb.method===m){S.bonus=S.bonus.filter(b=>b!==mb);render();
-        try{await run(sb.from('bonus_picks').delete().eq('card_id',c.id).eq('player_id',S.me));}catch(e){S.bonus=before;render();return fail(e);}}
-      else{S.bonus=S.bonus.filter(b=>b!==mb).concat([{fight_id:fid,player_id:S.me,method:m}]);render();
-        try{await run(sb.from('bonus_picks').upsert({card_id:c.id,player_id:S.me,fight_id:fid,method:m},{onConflict:'card_id,player_id'}));}catch(e){S.bonus=before;render();return fail(e);}}
+      const clear=!!(mb&&mb.fight_id===fid&&mb.method===m);
+      S.bonus=S.bonus.filter(b=>b!==mb).concat(clear?[]:[{fight_id:fid,player_id:S.me,method:m}]);render();
+      try{await run(sb.rpc('set_bonus_pick',{p_card:c.id,p_fight:fid,p_method:clear?null:m}));}
+      catch(e){S.bonus=before;render();fail(e);return scheduleReload(0);}
       return scheduleReload(800);}
     case 'method':{const f=c.fights.find(x=>x.id===t.dataset.f);const m=f&&f.method===t.dataset.m?null:t.dataset.m;
       return act(()=>run(sb.rpc('set_method',{p_fight:t.dataset.f,p_method:m})));}
